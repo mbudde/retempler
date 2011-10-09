@@ -12,7 +12,7 @@ class Config(dict):
         'regexes': [
             '(?P<show>.*?)S(?P<season>\d{2})E(?P<episode>\d{2})(?P<title>(\.[A-Z][a-z]+)*)',
         ],
-        'formats': [
+        'templates': [
             '{{ show|replace(".", " ")|trim }}{% if year %} ({{ year }}){% endif %}/Season {{ season|int }}/{{ "S%02dE%02d"|format(season|int, episode|int) }}{% if title %} - {{ title|replace(".", " ")|trim }} {% endif %}',
             ('{{ show }}{% if year %} ({{ year }}){% endif %}'
              '/Season {{ season }}/{{ "S%02dE%02d"|format(season|int, episode|int) }}'
