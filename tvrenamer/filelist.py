@@ -34,8 +34,6 @@ class FileListStore(Gtk.ListStore):
         match = re.match(regex, basename)
         if match:
             info = self.get_value(iter, self.COLUMN_FILEINFO)
-            if info is None:
-                info = {}
             info.update(match.groupdict())
             self.set_value(iter, self.COLUMN_FILEINFO, info)
 
@@ -93,27 +91,10 @@ class FileListView(Gtk.TreeView):
     def __init__(self, model=None):
         super(FileListView, self).__init__(model=model)
         self.set_rules_hint(True)
-        # self.set_reorderable(True)
         self.set_headers_clickable(True)
         self.get_selection().set_mode(Gtk.SelectionMode.MULTIPLE)
         self.add_events(Gdk.EventMask.KEY_PRESS_MASK)
         self.connect('key-press-event', self.on_keypress)
-
-        # cell = Gtk.CellRendererSpin()
-        # cell.set_property('editable', True)
-        # adjustment = Gtk.Adjustment(0, 0, 999, 1, 5)
-        # cell.set_property('adjustment', adjustment)
-        # cell.connect('edited', self.on_cell_edited, self.EPISODE_COL)
-        # column = Gtk.TreeViewColumn('Episode', cell, text=self.EPISODE_COL)
-        # column.set_sort_column_id(self.EPISODE_COL)
-        # self.append_column(column)
-
-        # cell = Gtk.CellRendererText()
-        # cell.set_property('editable', True)
-        # cell.connect('edited', self.on_cell_edited, self.TITLE_COL)
-        # column = Gtk.TreeViewColumn('Title', cell, text=self.TITLE_COL)
-        # column.set_resizable(True)
-        # self.append_column(column)
 
         cell = Gtk.CellRendererPixbuf()
         cell.set_property('xpad', 3)
@@ -122,7 +103,6 @@ class FileListView(Gtk.TreeView):
         self.append_column(column)
 
         cell = Gtk.CellRendererText()
-        # cell.set_property('editable', True)
         column = Gtk.TreeViewColumn('Filename', cell, text=FileListStore.COLUMN_BASENAME)
         column.set_sort_column_id(FileListStore.COLUMN_BASENAME)
         column.set_resizable(True)
@@ -130,6 +110,7 @@ class FileListView(Gtk.TreeView):
 
         cell = Gtk.CellRendererText()
         column = Gtk.TreeViewColumn('Preview', cell, text=FileListStore.COLUMN_PREVIEW)
+        column.set_sort_column_id(FileListStore.COLUMN_PREVIEW)
         column.set_resizable(True)
         self.append_column(column)
 

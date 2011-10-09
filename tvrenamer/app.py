@@ -126,9 +126,10 @@ class TVRenamer(Gtk.Window):
         if not selected:
             self.info_view.clear_info()
         else:
-            iter = model.get_iter(selected[0])
-            info = model.get_value(iter, model.COLUMN_FILEINFO)
-            self.info_view.set_info(info)
+            iters = [model.get_iter(path) for path in selected]
+            info_objs = [model.get_value(iter, model.COLUMN_FILEINFO)
+                         for iter in iters]
+            self.info_view.set_info(info_objs)
 
     def rename(self, *args):
         self.filelist_model.rename(self.destination.get_filename())
