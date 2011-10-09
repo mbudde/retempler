@@ -2,7 +2,7 @@
 import os
 import re
 
-from gi.repository import Gtk
+from gi.repository import Gtk, Gdk
 
 from jinja2 import Template
 from jinja2.exceptions import TemplateSyntaxError
@@ -25,7 +25,7 @@ class FileListStore(Gtk.ListStore):
                 filename,
                 os.path.splitext(os.path.basename(filename))[0],
                 None,
-                None,
+                {},
                 Gtk.STOCK_NO,
             ])
 
@@ -47,8 +47,6 @@ class FileListStore(Gtk.ListStore):
 
     def render_preview(self, iter, template):
         info = self.get_value(iter, self.COLUMN_FILEINFO)
-        if info is None:
-            return
         try:
             if not isinstance(template, Template):
                 template = Template(template)
@@ -93,7 +91,7 @@ class FileListStore(Gtk.ListStore):
 class FileListView(Gtk.TreeView):
 
     def __init__(self, model=None):
-        super(FileListView, self).__init__(model)
+        super(FileListView, self).__init__(model=model)
         self.set_rules_hint(True)
         # self.set_reorderable(True)
         self.set_headers_clickable(True)

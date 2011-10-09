@@ -3,13 +3,14 @@ import sys
 import os
 import functools
 
+import gi
+gi.require_version('Gtk', '2.0')
 from gi.repository import Gtk
-from gi.repository import Pango
 
 from .config import Config
 from .filelist import FileListStore, FileListView
 from .infoview import InfoView
-
+from .comboentry import ComboBoxEntryEdit
 
 class TVRenamer(Gtk.Window):
 
@@ -25,28 +26,22 @@ class TVRenamer(Gtk.Window):
         self.set_position(Gtk.WindowPosition.CENTER)
         self.connect('configure-event', self.on_configure_event)
 
-        vbox = Gtk.VBox(False, 12)
+        vbox = Gtk.VBox(homogeneous=False, spacing=12)
         self.add(vbox)
         vbox.set_border_width(12)
 
         # Regex combo box
-        hbox = Gtk.HBox(False, 6)
-        vbox.pack_start(hbox, False, False)
-        hbox.pack_start(Gtk.Label('Regex:', True, True, 0), False, False)
-        regex_store = Gtk.ListStore(str)
-        for regex in self.config.regexes:
-            regex_store.append([regex])
-        regex = Gtk.ComboBoxEntry(regex_store)
-        regex.get_child().modify_font(Pango.FontDescription("monospace 10"))
-        hbox.pack_start(regex, True, True, 0)
+        self.regex = ComboBoxEntryEdit(self.config, 'regexes')
+        hbox = self.regex.get_wrapped('Regex:')
+        vbox.pack_start(hbox, False, False, 0)
+
         extract = Gtk.Button('Extract Info')
-        hbox.pack_start(extract, False, False)
+        hbox.pack_start(extract, False, False, 0)
         def on_extract(*args):
             self.extract_info()
             self.update_previews()
             self.update_info()
         extract.connect('clicked', on_extract)
-        self.regex_store, self.regex = regex_store, regex
 
         # List
         paned = Gtk.HPaned()
@@ -57,8 +52,14 @@ class TVRenamer(Gtk.Window):
         sw.set_shadow_type(Gtk.ShadowType.ETCHED_IN)
         sw.set_policy(Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.AUTOMATIC)
 
-        print sys.argv
-        files = [filename for filename in sys.argv[1:] if os.path.isfile(filename)]
+        files = []
+        for path in (os.path.realpath(path) for path in sys.argv[1:]):
+            if os.path.isdir(path):
+                dirfiles = (os.path.join(path, name) for name in os.listdir(path))
+                files.extend(name for name in dirfiles if os.path.isfile(name))
+            elif os.path.isfile(path):
+                files.append(path)
+
         self.filelist_model = FileListStore(files)
         self.filelist_view = FileListView(self.filelist_model)
         self.filelist_view.set_size_request(300, -1)
@@ -76,36 +77,32 @@ class TVRenamer(Gtk.Window):
         sw.add(self.info_view)
 
         # Template combo box
-        hbox = Gtk.HBox(False, 6)
-        vbox.pack_start(hbox, False, False)
-        hbox.pack_start(Gtk.Label('Template:', True, True, 0), False, False)
-        template_store = Gtk.ListStore(str)
-        for template in self.config.templates:
-            template_store.append([template])
-        template = Gtk.ComboBoxEntry(template_store)
-        hbox.pack_start(template, True, True, 0)
-        template.get_child().modify_font(Pango.FontDescription("monospace 10"))
-        template.connect('changed', self.update_previews)
-        self.template_store, self.template = template_store, template
+        self.template = ComboBoxEntryEdit(self.config, 'templates')
+        self.template.connect('changed', self.update_previews)
+        hbox = self.template.get_wrapped('Template:')
+        vbox.pack_start(hbox, False, False, 0)
 
         # Destination folder
-        hbox = Gtk.HBox(False, 6)
-        vbox.pack_start(hbox, False, False)
-        hbox.pack_start(Gtk.Label('Destination Folder:', True, True, 0), False, False)
-        dialog = Gtk.FileChooserDialog('Select destination',
+        hbox = Gtk.HBox(homogeneous=False, spacing=6)
+        vbox.pack_start(hbox, False, False, 0)
+        hbox.pack_start(Gtk.Label(label='Destination Folder:'), False, False, 0)
+        dialog = Gtk.FileChooserDialog(title='Select destination',
                                        action=Gtk.FileChooserAction.SELECT_FOLDER,
                                        buttons=('Cancel', Gtk.ResponseType.CANCEL,
                                                 'Select', Gtk.ResponseType.ACCEPT))
-        self.destination = Gtk.FileChooserButton(dialog)
-        self.destination.set_filename(self.config.destination)
+        self.destination = Gtk.FileChooserButton(dialog=dialog)
+        if len(sys.argv) > 1 and os.path.isdir(sys.argv[1]):
+            self.destination.set_filename(sys.argv[1])
+        else:
+            self.destination.set_filename(self.config.destination)
         def on_destination_changed(button):
             self.config.destination = button.get_filename()
         self.destination.connect('file-set', on_destination_changed)
-        hbox.pack_start(self.destination, False, False)
+        hbox.pack_start(self.destination, False, False, 0)
         
         # Rename button
-        rename = Gtk.Button('Rename')
-        vbox.pack_start(rename, False, False)
+        rename = Gtk.Button(label='Rename')
+        vbox.pack_start(rename, False, False, 0)
         rename.connect('clicked', self.rename)
 
         self.show_all()
@@ -117,25 +114,11 @@ class TVRenamer(Gtk.Window):
         Gtk.main_quit()
         self.config.save()
 
-    def get_regex(self):
-        iter = self.regex.get_active_iter()
-        if iter:
-            return self.regex_store.get_value(iter, 0)
-        else:
-            return self.regex.get_child().get_text()
-
-    def get_template(self):
-        iter = self.template.get_active_iter()
-        if iter:
-            return self.template_store.get_value(iter, 0)
-        else:
-            return self.template.get_child().get_text()
-
     def extract_info(self, *args):
-        self.filelist_model.extract_info_all(self.get_regex())
+        self.filelist_model.extract_info_all(self.regex.get_active_text())
 
     def update_previews(self, *args):
-        self.filelist_model.render_preview_all(self.get_template())
+        self.filelist_model.render_preview_all(self.template.get_active_text())
 
     def update_info(self, *args):
         selection = self.filelist_view.get_selection()
@@ -148,7 +131,7 @@ class TVRenamer(Gtk.Window):
             self.info_view.set_info(info)
 
     def rename(self, *args):
-        self.filelist_model.rename(self.config.destination)
+        self.filelist_model.rename(self.destination.get_filename())
 
     def on_cell_edited(self, cell, path, new_text, column):
         if column == self.EPISODE_COL:

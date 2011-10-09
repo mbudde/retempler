@@ -40,9 +40,9 @@ class InfoView(Gtk.TreeView):
         model = Gtk.ListStore(str, str)
         model.set_sort_column_id(self.COLUMN_KEY, Gtk.SortType.ASCENDING)
         model.connect('row-changed', self.on_model_changed)
-        if info:
-            for key, value in info.iteritems():
-                model.append([key, str(value)])
+        for key, value in info.iteritems():
+            model.append([key, str(value)])
+        model.append([None, None])
         self.set_model(model)
 
     def clear_info(self):
@@ -55,12 +55,26 @@ class InfoView(Gtk.TreeView):
             if new_text in self.info:
                 return
             old_key = model[path][column]
-            value = self.info.pop(old_key)
-            self.info[new_text] = value
+            if not new_text:
+                if not old_key:
+                    return
+                iter = model.get_iter(path)
+                model.remove(iter)
+                if old_key:
+                    del self.info[old_key]
+                return
+            if old_key is None:
+                value = model[path][self.COLUMN_VALUE]
+                self.info[new_text] = value
+                model.append([None, None])
+            else:
+                value = self.info.pop(old_key)
+                self.info[new_text] = value
             model[path][column] = new_text
         else:
             key = model[path][self.COLUMN_KEY]
-            self.info[key] = new_text
+            if key is not None:
+                self.info[key] = new_text
             model[path][column] = new_text
 
     def on_model_changed(self, model, path, *args):
