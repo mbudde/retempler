@@ -18,6 +18,7 @@ class Config(dict):
              '/Season {{ season }}/{{ "S%02dE%02d"|format(season|int, episode|int) }}'
              '{% if title %} - {{ title }} {% endif %}'),
         ],
+        'destination': None,
     }
 
     def __getattribute__(self, name):

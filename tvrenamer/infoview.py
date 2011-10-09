@@ -1,12 +1,12 @@
 
-import gtk
-import gobject
+from gi.repository import Gtk
+from gi.repository import GObject
 
 
-class InfoView(gtk.TreeView):
+class InfoView(Gtk.TreeView):
 
     __gsignals__ = {
-        'info-changed': (gobject.SIGNAL_RUN_LAST, None, (object, object)),
+        'info-changed': (GObject.SignalFlags.RUN_LAST, None, (object, object)),
     }
 
     (COLUMN_KEY,
@@ -15,30 +15,30 @@ class InfoView(gtk.TreeView):
     def __init__(self):
         super(InfoView, self).__init__()
         self.info = None
-        # self.get_selection().set_mode(gtk.SELECTION_MULTIPLE)
-        # self.add_events(gtk.gdk.KEY_PRESS_MASK)
+        # self.get_selection().set_mode(Gtk.SelectionMode.MULTIPLE)
+        # self.add_events(Gdk.EventMask.KEY_PRESS_MASK)
         # self.connect('key-press-event', self.on_keypress)
 
-        cell = gtk.CellRendererText()
+        cell = Gtk.CellRendererText()
         cell.set_property('editable', True)
         cell.connect('edited', self.on_cell_edited, self.COLUMN_KEY)
-        column = gtk.TreeViewColumn('Key', cell, text=self.COLUMN_KEY)
+        column = Gtk.TreeViewColumn('Key', cell, text=self.COLUMN_KEY)
         column.set_sort_column_id(self.COLUMN_KEY)
         column.set_resizable(True)
         self.append_column(column)
 
-        cell = gtk.CellRendererText()
+        cell = Gtk.CellRendererText()
         cell.set_property('editable', True)
         cell.connect('edited', self.on_cell_edited, self.COLUMN_VALUE)
-        column = gtk.TreeViewColumn('Value', cell, text=self.COLUMN_VALUE)
+        column = Gtk.TreeViewColumn('Value', cell, text=self.COLUMN_VALUE)
         column.set_sort_column_id(self.COLUMN_VALUE)
         column.set_resizable(True)
         self.append_column(column)
 
     def set_info(self, info):
         self.info = info
-        model = gtk.ListStore(str, str)
-        model.set_sort_column_id(self.COLUMN_KEY, gtk.SORT_ASCENDING)
+        model = Gtk.ListStore(str, str)
+        model.set_sort_column_id(self.COLUMN_KEY, Gtk.SortType.ASCENDING)
         model.connect('row-changed', self.on_model_changed)
         if info:
             for key, value in info.iteritems():
