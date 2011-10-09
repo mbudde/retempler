@@ -16,9 +16,6 @@ class InfoView(Gtk.TreeView):
     def __init__(self):
         super(InfoView, self).__init__()
         self.info = None
-        # self.get_selection().set_mode(Gtk.SelectionMode.MULTIPLE)
-        # self.add_events(Gdk.EventMask.KEY_PRESS_MASK)
-        # self.connect('key-press-event', self.on_keypress)
 
         cell = Gtk.CellRendererText()
         cell.set_property('editable', True)
@@ -100,7 +97,6 @@ class InfoView(Gtk.TreeView):
             model.set_value(iter, self.COLUMN_KEY_FORMATTED, new_text)
         else:
             key = model.get_value(iter, self.COLUMN_KEY)
-            print 'changing value for key', key
             if key is not None:
                 for info in self.info_objs:
                     info[key] = new_text
