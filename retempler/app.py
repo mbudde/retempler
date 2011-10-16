@@ -20,18 +20,51 @@ class Retempler(Gtk.Window):
         self.config = Config()
         self.config.load()
 
+
+        self.setup_interface()
+        self.initialize_state()
+
+        self.show_all()
+
+    def setup_interface(self):
         self.set_title('Retempler')
         self.connect('destroy', self.quit)
-        self.resize(self.config.width, self.config.height)
         self.set_position(Gtk.WindowPosition.CENTER)
         self.connect('configure-event', self.on_configure_event)
 
+        main_box = Gtk.VBox(homogeneous=False)
+        self.add(main_box)
+
+        # Menu
+        menu_bar = Gtk.MenuBar()
+        main_box.pack_start(menu_bar, False, False, 0)
+
+        menu_item = Gtk.MenuItem(label='Files')
+        menu_bar.append(menu_item)
+        menu = Gtk.Menu()
+        menu_item.set_submenu(menu)
+        sub_item = Gtk.MenuItem(label='Add files...')
+        menu.append(sub_item)
+
+        menu_item = Gtk.MenuItem(label='Options')
+        menu_bar.append(menu_item)
+        menu = Gtk.Menu()
+        menu_item.set_submenu(menu)
+        sub_item = Gtk.CheckMenuItem(label='Show Full Path')
+        sub_item.set_active(self.config.show_full_path)
+        def show_full_path_toggled(item):
+            active = item.get_active()
+            self.config.show_full_path = active
+            self.filelist_view.props.show_full_path = active
+        sub_item.connect('toggled', show_full_path_toggled)
+        menu.append(sub_item)
+
         vbox = Gtk.VBox(homogeneous=False, spacing=12)
-        self.add(vbox)
+        main_box.pack_start(vbox, True, True, 0)
         vbox.set_border_width(12)
 
         # Regex combo box
-        self.regex = ComboBoxEntryEdit(self.config, 'regexes')
+        self.regex = ComboBoxEntryEdit()
         hbox = self.regex.get_wrapped('Regex:')
         vbox.pack_start(hbox, False, False, 0)
 
@@ -52,18 +85,11 @@ class Retempler(Gtk.Window):
         sw.set_shadow_type(Gtk.ShadowType.ETCHED_IN)
         sw.set_policy(Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.AUTOMATIC)
 
-        files = []
-        for path in (os.path.realpath(path) for path in sys.argv[1:]):
-            if os.path.isdir(path):
-                dirfiles = (os.path.join(path, name) for name in os.listdir(path))
-                files.extend(name for name in dirfiles if os.path.isfile(name))
-            elif os.path.isfile(path):
-                files.append(path)
-
-        self.filelist_model = FileListStore(files)
+        self.filelist_model = FileListStore()
         self.filelist_view = FileListView(self.filelist_model)
         self.filelist_view.set_size_request(300, -1)
         self.filelist_view.get_selection().connect('changed', self.update_info)
+        self.filelist_view.props.show_full_path = self.config.show_full_path
         sw.add(self.filelist_view)
 
         sw = Gtk.ScrolledWindow()
@@ -77,7 +103,7 @@ class Retempler(Gtk.Window):
         sw.add(self.info_view)
 
         # Template combo box
-        self.template = ComboBoxEntryEdit(self.config, 'templates')
+        self.template = ComboBoxEntryEdit()
         self.template.connect('changed', self.update_previews)
         hbox = self.template.get_wrapped('Template:')
         vbox.pack_start(hbox, False, False, 0)
@@ -91,10 +117,6 @@ class Retempler(Gtk.Window):
                                        buttons=('Cancel', Gtk.ResponseType.CANCEL,
                                                 'Select', Gtk.ResponseType.ACCEPT))
         self.destination = Gtk.FileChooserButton(dialog=dialog)
-        if len(sys.argv) > 1 and os.path.isdir(sys.argv[1]):
-            self.destination.set_filename(sys.argv[1])
-        elif self.config.destination:
-            self.destination.set_filename(self.config.destination)
         def on_destination_changed(button):
             self.config.destination = button.get_filename()
         self.destination.connect('file-set', on_destination_changed)
@@ -105,7 +127,17 @@ class Retempler(Gtk.Window):
         vbox.pack_start(rename, False, False, 0)
         rename.connect('clicked', self.rename)
 
-        self.show_all()
+    def initialize_state(self):
+        self.resize(self.config.width, self.config.height)
+        self.filelist_model.add_paths(sys.argv[1:])
+
+        if len(sys.argv) > 1 and os.path.isdir(sys.argv[1]):
+            self.destination.set_filename(sys.argv[1])
+        elif self.config.destination:
+            self.destination.set_filename(self.config.destination)
+
+        self.regex.set_config(self.config, 'regexes')
+        self.template.set_config(self.config, 'templates')
 
     def run(self):
         Gtk.main()
@@ -115,7 +147,8 @@ class Retempler(Gtk.Window):
         self.config.save()
 
     def extract_info(self, *args):
-        self.filelist_model.extract_info_all(self.regex.get_active_text())
+        self.filelist_model.extract_info_all(self.regex.get_active_text(),
+                                             self.config.show_full_path)
 
     def update_previews(self, *args):
         self.filelist_model.render_preview_all(self.template.get_active_text())

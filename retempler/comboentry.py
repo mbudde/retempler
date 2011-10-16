@@ -5,18 +5,26 @@ from gi.repository import Pango
 
 class ComboBoxEntryEdit(Gtk.ComboBoxEntry):
 
-    def __init__(self, config, configvar):
-        model = Gtk.ListStore(str)
-        for value in config[configvar]:
-            model.append([value])
-
-        super(ComboBoxEntryEdit, self).__init__(model=model, text_column=0)
+    def __init__(self, config=None, configvar=None):
+        self.model = Gtk.ListStore(str)
+        super(ComboBoxEntryEdit, self).__init__(model=self.model, text_column=0)
         self.get_child().modify_font(Pango.FontDescription("monospace 10"))
 
-        def save_entries(*args):
-            config[configvar] = [row[0] for row in self.get_model()]
-        model.connect('row-changed', save_entries)
-        model.connect('row-deleted', save_entries)
+        self.set_config(config, configvar)
+        self.model.connect('row-changed', self._save_entries)
+        self.model.connect('row-deleted', self._save_entries)
+
+    def set_config(self, config, configvar):
+        self.model.clear()
+        self.config = config
+        self.configvar = configvar
+        if config and configvar:
+            for value in config[configvar]:
+                self.model.append([value])
+
+    def _save_entries(self, *args):
+        if self.config and self.configvar:
+            self.config[self.configvar] = [row[0] for row in self.get_model()]
 
     def get_wrapped(self, label):
         hbox = Gtk.HBox(homogeneous=False, spacing=6)

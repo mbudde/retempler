@@ -19,6 +19,7 @@ class Config(dict):
              '{% if title %} - {{ title }} {% endif %}'),
         ],
         'destination': None,
+        'show_full_path': False,
     }
 
     def __getattribute__(self, name):

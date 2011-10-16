@@ -2,7 +2,7 @@
 import os
 import re
 
-from gi.repository import Gtk, Gdk
+from gi.repository import Gtk, Gdk, GObject
 
 from jinja2 import Template
 from jinja2.exceptions import TemplateSyntaxError
@@ -16,31 +16,43 @@ class FileListStore(Gtk.ListStore):
      COLUMN_FILEINFO,
      COLUMN_RENAMED) = range(5)
 
-    def __init__(self, filenames):
+    def __init__(self):
         super(FileListStore, self).__init__(str, str, str, object, str)
         self.set_sort_column_id(self.COLUMN_BASENAME, Gtk.SortType.ASCENDING)
 
-        for filename in filenames:
-            self.append([
-                filename,
-                os.path.splitext(os.path.basename(filename))[0],
-                None,
-                {},
-                Gtk.STOCK_NO,
-            ])
+    def add_paths(self, paths):
+        for path in paths:
+            if os.path.isdir(path):
+                for root, dirs, files in os.walk(path):
+                    for name in files:
+                        self.add_file(os.path.join(root, name))
+            elif os.path.isfile(path):
+                self.add_file(path)
 
-    def extract_info(self, iter, regex):
-        basename = self.get_value(iter, self.COLUMN_BASENAME)
-        match = re.match(regex, basename)
+    def add_file(self, filename):
+        self.append([
+            filename,
+            os.path.splitext(os.path.basename(filename))[0],
+            None,
+            {},
+            Gtk.STOCK_NO,
+        ])
+
+    def extract_info(self, iter, regex, match_full_path=False):
+        if match_full_path:
+            string = self.get_value(iter, self.COLUMN_FILENAME)
+        else:
+            string = self.get_value(iter, self.COLUMN_BASENAME)
+        match = re.match(regex, string)
         if match:
             info = self.get_value(iter, self.COLUMN_FILEINFO)
             info.update(match.groupdict())
             self.set_value(iter, self.COLUMN_FILEINFO, info)
 
-    def extract_info_all(self, regex):
+    def extract_info_all(self, *args, **kwargs):
         iter = self.get_iter_first()
         while iter:
-            self.extract_info(iter, regex)
+            self.extract_info(iter, *args, **kwargs)
             iter = self.iter_next(iter)
 
     def render_preview(self, iter, template):
@@ -53,14 +65,14 @@ class FileListStore(Gtk.ListStore):
         except TemplateSyntaxError:
             pass
 
-    def render_preview_all(self, template):
+    def render_preview_all(self, template, *args, **kwargs):
         try:
             template = Template(template)
         except TemplateSyntaxError:
             return
         iter = self.get_iter_first()
         while iter:
-            self.render_preview(iter, template)
+            self.render_preview(iter, template, *args, **kwargs)
             iter = self.iter_next(iter)
 
     def get_destination(self, iter, destination_folder):
@@ -88,6 +100,8 @@ class FileListStore(Gtk.ListStore):
 
 class FileListView(Gtk.TreeView):
 
+    show_full_path = GObject.property(type=bool, default=False)
+
     def __init__(self, model=None):
         super(FileListView, self).__init__(model=model)
         self.set_rules_hint(True)
@@ -102,11 +116,22 @@ class FileListView(Gtk.TreeView):
         column.set_resizable(False)
         self.append_column(column)
 
-        cell = Gtk.CellRendererText()
-        column = Gtk.TreeViewColumn('Filename', cell, text=FileListStore.COLUMN_BASENAME)
-        column.set_sort_column_id(FileListStore.COLUMN_BASENAME)
-        column.set_resizable(True)
-        self.append_column(column)
+        filename_cell = Gtk.CellRendererText()
+        filename_column = Gtk.TreeViewColumn('Filename', filename_cell,
+                                             text=FileListStore.COLUMN_BASENAME)
+        filename_column.set_sort_column_id(FileListStore.COLUMN_BASENAME)
+        filename_column.set_resizable(True)
+        self.append_column(filename_column)
+
+        def update_filename_column(self, prop):
+            filename_column.clear_attributes(filename_cell)
+            if self.show_full_path:
+                column = FileListStore.COLUMN_FILENAME
+            else:
+                column = FileListStore.COLUMN_BASENAME
+            filename_column.add_attribute(filename_cell, 'text', column)
+            filename_column.set_sort_column_id(column)
+        self.connect('notify::show-full-path', update_filename_column)
 
         cell = Gtk.CellRendererText()
         column = Gtk.TreeViewColumn('Preview', cell, text=FileListStore.COLUMN_PREVIEW)
