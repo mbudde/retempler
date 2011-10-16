@@ -93,7 +93,7 @@ class Retempler(Gtk.Window):
         self.destination = Gtk.FileChooserButton(dialog=dialog)
         if len(sys.argv) > 1 and os.path.isdir(sys.argv[1]):
             self.destination.set_filename(sys.argv[1])
-        else:
+        elif self.config.destination:
             self.destination.set_filename(self.config.destination)
         def on_destination_changed(button):
             self.config.destination = button.get_filename()
