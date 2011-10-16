@@ -12,15 +12,15 @@ from .filelist import FileListStore, FileListView
 from .infoview import InfoView
 from .comboentry import ComboBoxEntryEdit
 
-class TVRenamer(Gtk.Window):
+class Retempler(Gtk.Window):
 
     def __init__(self):
-        super(TVRenamer, self).__init__()
+        super(Retempler, self).__init__()
 
         self.config = Config()
         self.config.load()
 
-        self.set_title('TV Series Renamer')
+        self.set_title('Retempler')
         self.connect('destroy', self.quit)
         self.resize(self.config.width, self.config.height)
         self.set_position(Gtk.WindowPosition.CENTER)

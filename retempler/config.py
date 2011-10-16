@@ -40,7 +40,7 @@ class Config(dict):
             return self.defaults[key]
 
     def load(self):
-        dir = basedir.load_first_config('tvrenamer')
+        dir = basedir.load_first_config('retempler')
         if dir:
             try:
                 with open(os.path.join(dir, 'settings.json'), 'r') as fp:
@@ -49,6 +49,6 @@ class Config(dict):
                 pass
 
     def save(self):
-        dir = basedir.save_config_path('tvrenamer')
+        dir = basedir.save_config_path('retempler')
         with open(os.path.join(dir, 'settings.json'), 'w') as fp:
             json.dump(self, fp, indent=4)
